@@ -29,6 +29,13 @@ Thumbs.db
 # docs
 *.md
 !README.md
+!CHANGELOG.md
 
+# scripts
+scripts/
+
+.npmrc
+
+# Root directory specific
 .cursor
 .github/commit-guide.md

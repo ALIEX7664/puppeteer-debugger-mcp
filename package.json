@@ -27,17 +27,16 @@
   ],
   "author": {
     "name": "aliex7664",
-    "url": "https://github.com/ALIEX7664/mcp/tree/main/debugger-mcp"
+    "url": "https://github.com/ALIEX7664/mcp"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ALIEX7664/mcp.git",
-    "directory": "debugger-mcp"
+    "url": "https://github.com/ALIEX7664/mcp.git"
   },
   "bugs": {
     "url": "https://github.com/ALIEX7664/mcp/issues"
   },
-  "homepage": "https://github.com/ALIEX7664/mcp/tree/main/debugger-mcp#readme",
+  "homepage": "https://github.com/ALIEX7664/mcp#readme",
   "publishConfig": {
     "access": "public"
   },
