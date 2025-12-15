@@ -1,7 +1,6 @@
 # 浏览器调试 MCP Server
 
 [![npm version](https://img.shields.io/npm/v/@aliex7664/puppeteer-debugger-mcp?style=flat-square)](https://www.npmjs.com/package/@aliex7664/puppeteer-debugger-mcp)
-[![npm downloads](https://img.shields.io/npm/dm/@aliex7664/puppeteer-debugger-mcp?style=flat-square)](https://www.npmjs.com/package/@aliex7664/puppeteer-debugger-mcp)
 [![CI](https://github.com/ALIEX7664/mcp/workflows/CI/badge.svg)](https://github.com/ALIEX7664/mcp/actions)
 
 一个基于 Puppeteer 和 Chrome DevTools Protocol (CDP) 的 MCP Server 插件，支持通过持久化浏览器连接进行调试和排查。
@@ -372,13 +371,9 @@ npm run build -- --no-clean
 ## 注意事项
 
 1. **持久化连接**：浏览器实例在 Server 启动时创建，保持运行直到 Server 关闭。所有工具调用共享同一个浏览器实例。
-
 2. **动态 URL**：所有工具都支持通过参数传入 URL。如果页面不存在，系统会自动创建新页面并导航到指定 URL。
-
 3. **资源清理**：Server 关闭时会自动清理所有浏览器连接和页面。
-
 4. **错误处理**：所有工具调用都包含错误处理，错误信息会通过 MCP 协议返回。
-
 5. **Chrome 要求**：
 
    - 需要确保系统已安装 Chrome 或 Chromium
