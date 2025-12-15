@@ -1,4 +1,8 @@
 import { defineConfig } from 'tsup';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
 
 /**
  * tsup 配置文件
@@ -17,6 +21,14 @@ import { defineConfig } from 'tsup';
  * - splitting: 代码分割（保持文件结构）
  * - treeshake: 启用 tree shaking（移除未使用的代码）
  */
+// 读取 package.json 的版本号
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, 'package.json'), 'utf-8')
+);
+const version = packageJson.version;
+
 export default defineConfig({
   // 入口文件
   entry: ['src/index.ts'],
@@ -62,6 +74,12 @@ export default defineConfig({
   // 这对于可执行脚本很重要
   banner: {
     js: '#!/usr/bin/env node',
+  },
+
+  // 定义全局常量，构建时会替换代码中的标识符
+  // 这样版本号会在构建时内联到代码中，无需运行时读取 package.json
+  define: {
+    '__PACKAGE_VERSION__': JSON.stringify(version),
   },
 });
 

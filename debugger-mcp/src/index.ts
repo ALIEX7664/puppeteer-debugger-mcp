@@ -28,6 +28,11 @@ import { CacheHandler } from './cdp-handlers/cache-handler.js';
 import { PerformanceHandler } from './cdp-handlers/performance-handler.js';
 import { HeapHandler } from './cdp-handlers/heap-handler.js';
 
+// 版本号会在构建时通过 tsup 的 define 选项内联
+// 这样无需运行时读取 package.json，也无需每次手动修改版本号
+declare const __PACKAGE_VERSION__: string;
+const version = __PACKAGE_VERSION__;
+
 /**
  * DebuggerMCPServer 类
  * 
@@ -66,7 +71,7 @@ class DebuggerMCPServer {
     this.server = new McpServer(
       {
         name: 'puppeteer-debugger-mcp',      // 服务器名称，客户端会看到这个名称
-        version: '1.0.0',          // 服务器版本号
+        version: version,          // 服务器版本号
       },
       {
         // capabilities 声明服务器支持的功能
