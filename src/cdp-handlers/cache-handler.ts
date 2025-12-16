@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { CacheStatus, GetCacheStatusParams } from '../types.js';
 import { BrowserManager } from '../browser-manager.js';
 
@@ -124,7 +124,16 @@ export class CacheHandler {
   public async clearCookies(url?: string): Promise<void> {
     const page = await this.browserManager.getPage(url);
     const client = await page.target().createCDPSession();
-    await client.send('Network.clearBrowserCookies');
+    try {
+      await client.send('Network.clearBrowserCookies');
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
+    }
   }
 }
 

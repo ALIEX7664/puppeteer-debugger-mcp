@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { ElementState, CheckElementParams } from '../types.js';
 import { BrowserManager } from '../browser-manager.js';
 
@@ -115,8 +115,8 @@ export class ElementHandler {
     page: Page,
     selector: string
   ): Promise<number | null> {
+    const client = await page.target().createCDPSession();
     try {
-      const client = await page.target().createCDPSession();
       const { root } = await client.send('DOM.getDocument');
       const { nodeId } = await client.send('DOM.querySelector', {
         nodeId: root.nodeId,
@@ -125,6 +125,13 @@ export class ElementHandler {
       return nodeId;
     } catch {
       return null;
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
     }
   }
 }

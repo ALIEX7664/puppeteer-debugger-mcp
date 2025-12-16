@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { ConsoleLogEntry, GetConsoleErrorsParams } from '../types.js';
 import { BrowserManager } from '../browser-manager.js';
 
@@ -42,10 +42,17 @@ export class ConsoleHandler {
 
   /**
    * 设置 Console 监听器
+   * 注意：需要在页面关闭时移除监听器，防止内存泄漏
    */
   private setupConsoleListener(page: Page, pageUrl: string): void {
+    // 监听页面关闭事件，清理监听器
+    const cleanup = () => {
+      this.consoleLogs.delete(pageUrl);
+    };
+    page.once('close', cleanup);
+
     // 监听 Console 消息
-    page.on('console', (msg) => {
+    const consoleHandler = (msg: any) => {
       const type = this.mapConsoleType(msg.type());
       const text = msg.text();
       const location = msg.location();
@@ -75,10 +82,11 @@ export class ConsoleHandler {
       const logs = this.consoleLogs.get(pageUrl) || [];
       logs.push(entry);
       this.consoleLogs.set(pageUrl, logs);
-    });
+    };
+    page.on('console', consoleHandler);
 
     // 监听页面错误
-    page.on('pageerror', (error) => {
+    const pageErrorHandler = (error: Error) => {
       const entry: ConsoleLogEntry = {
         type: 'error',
         text: error.message,
@@ -90,10 +98,11 @@ export class ConsoleHandler {
       const logs = this.consoleLogs.get(pageUrl) || [];
       logs.push(entry);
       this.consoleLogs.set(pageUrl, logs);
-    });
+    };
+    page.on('pageerror', pageErrorHandler);
 
     // 监听请求失败
-    page.on('requestfailed', (request) => {
+    const requestFailedHandler = (request: any) => {
       const entry: ConsoleLogEntry = {
         type: 'error',
         text: `Request failed: ${request.url()}`,
@@ -104,6 +113,15 @@ export class ConsoleHandler {
       const logs = this.consoleLogs.get(pageUrl) || [];
       logs.push(entry);
       this.consoleLogs.set(pageUrl, logs);
+    };
+    page.on('requestfailed', requestFailedHandler);
+
+    // 在页面关闭时移除所有监听器
+    page.once('close', () => {
+      page.removeListener('console', consoleHandler);
+      page.removeListener('pageerror', pageErrorHandler);
+      page.removeListener('requestfailed', requestFailedHandler);
+      this.consoleLogs.delete(pageUrl);
     });
   }
 
