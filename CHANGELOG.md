@@ -1,3 +1,10 @@
+## [1.0.5](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v1.0.4...v1.0.5) (2025-12-16)
+
+
+### Bug Fixes
+
+* **server:** 修复程序启动异常，移除 lighthouse 依赖 ([8fc8af9](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/commit/8fc8af90eb82e486e223ac0d3603d2170a149d96))
+
 ## [1.0.4](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v1.0.3...v1.0.4) (2025-12-16)
 
 
