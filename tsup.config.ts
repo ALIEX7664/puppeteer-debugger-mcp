@@ -66,7 +66,7 @@ export default defineConfig({
   // 这些依赖会在运行时从 node_modules 加载
   external: [
     '@modelcontextprotocol/sdk',
-    'puppeteer-core',
+    'puppeteer',
     'zod',
   ],
 

@@ -11,9 +11,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.24.3
         version: 1.24.3(zod@3.25.76)
-      puppeteer-core:
+      puppeteer:
         specifier: ^21.0.0
-        version: 21.11.0
+        version: 21.11.0(typescript@5.9.3)
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -1748,6 +1748,12 @@ packages:
   puppeteer-core@21.11.0:
     resolution: {integrity: sha512-ArbnyA3U5SGHokEvkfWjW+O8hOxV1RSJxOgriX/3A4xZRqixt9ZFHD0yPgZQF05Qj0oAqi8H/7stDorjoHY90Q==}
     engines: {node: '>=16.13.2'}
+
+  puppeteer@21.11.0:
+    resolution: {integrity: sha512-9jTHuYe22TD3sNxy0nEIzC7ZrlRnDgeX3xPkbS7PnbdwYjl2o/z/YuCrRBwezdKpbTDTJ4VqIggzNyeRcKq3cg==}
+    engines: {node: '>=16.13.2'}
+    deprecated: < 24.15.0 is no longer supported
+    hasBin: true
 
   qs@6.14.0:
     resolution: {integrity: sha512-YWWTjgABSKcvs/nWBi9PycY/JiPJqOD4JA6o9Sej2AtvSGarXxKC3OQSk4pAarbdQlKAh5D4FCQkJNkW+GAn3w==}
@@ -3821,6 +3827,20 @@ snapshots:
       - encoding
       - react-native-b4a
       - supports-color
+      - utf-8-validate
+
+  puppeteer@21.11.0(typescript@5.9.3):
+    dependencies:
+      '@puppeteer/browsers': 1.9.1
+      cosmiconfig: 9.0.0(typescript@5.9.3)
+      puppeteer-core: 21.11.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bufferutil
+      - encoding
+      - react-native-b4a
+      - supports-color
+      - typescript
       - utf-8-validate
 
   qs@6.14.0:

@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page } from 'puppeteer-core';
+import puppeteer, { Browser, Page } from 'puppeteer';
 import { BrowserConfig, PageInfo } from './types.js';
 import { existsSync } from 'fs';
 import { access } from 'fs/promises';
@@ -91,17 +91,25 @@ export class BrowserManager {
           return;
         }
 
-        // 查找并验证 Chrome/Chromium 可执行文件路径
+        // 尝试查找本地浏览器路径（可选）
+        // 如果找不到本地浏览器，puppeteer 会使用自带的 Chromium
         const executablePath = await this.findChromeExecutablePath();
 
-        this.browser = await puppeteer.launch({
+        // 构建启动选项
+        const launchOptions: any = {
           headless: this.config.headless,
           args: this.config.args,
-          executablePath,
-          // 优化内存使用
           protocol: 'cdp',
           ignoreHTTPSErrors: true,
-        });
+        };
+
+        // 只有在找到本地浏览器时才设置 executablePath
+        // 如果 executablePath 为 undefined，puppeteer 会使用自带的 Chromium
+        if (executablePath) {
+          launchOptions.executablePath = executablePath;
+        }
+
+        this.browser = await puppeteer.launch(launchOptions);
 
         // 启动页面清理定时器
         this.startPageCleanup();
@@ -109,8 +117,8 @@ export class BrowserManager {
         const errorMessage = error instanceof Error ? error.message : String(error);
         throw new Error(
           `Failed to launch browser: ${errorMessage}\n` +
-          `Please ensure Chrome or Chromium is installed.\n` +
-          `You can set PUPPETEER_EXECUTABLE_PATH environment variable to specify the Chrome path.`
+          `If no local browser is found, puppeteer will use its bundled Chromium.\n` +
+          `You can set PUPPETEER_EXECUTABLE_PATH environment variable to specify a custom browser path.`
         );
       } finally {
         // 清除初始化锁
@@ -123,19 +131,18 @@ export class BrowserManager {
 
   /**
    * 查找并验证 Chrome/Chromium 可执行文件路径
-   * 支持跨平台和自定义路径，如果找不到则抛出明确的错误
+   * 支持跨平台和自定义路径
+   * 如果找不到本地浏览器，返回 undefined，让 puppeteer 使用自带的 Chromium
    */
-  private async findChromeExecutablePath(): Promise<string> {
+  private async findChromeExecutablePath(): Promise<string | undefined> {
     // 优先使用环境变量指定的路径
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       const envPath = process.env.PUPPETEER_EXECUTABLE_PATH;
       if (await this.checkFileExists(envPath)) {
         return envPath;
       }
-      throw new Error(
-        `指定的浏览器路径不存在: ${envPath}\n` +
-        `请检查 PUPPETEER_EXECUTABLE_PATH 环境变量是否正确，或安装 Chrome/Chromium 浏览器。`
-      );
+      // 如果环境变量指定的路径不存在，返回 undefined，让 puppeteer 使用自带的
+      return undefined;
     }
 
     // 根据平台查找浏览器
@@ -143,7 +150,6 @@ export class BrowserManager {
     let searchPaths: string[] = [];
 
     if (platform === 'win32') {
-      // Windows 常见路径
       searchPaths = [
         'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
         'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
@@ -155,7 +161,6 @@ export class BrowserManager {
         `${process.env.LOCALAPPDATA}\\Chromium\\Application\\chromium.exe`,
       ];
     } else if (platform === 'darwin') {
-      // macOS 路径
       searchPaths = [
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         '/Applications/Chromium.app/Contents/MacOS/Chromium',
@@ -163,7 +168,6 @@ export class BrowserManager {
         '/usr/local/bin/chromium',
       ];
     } else if (platform === 'linux') {
-      // Linux 常见路径
       searchPaths = [
         '/usr/bin/google-chrome',
         '/usr/bin/google-chrome-stable',
@@ -182,17 +186,9 @@ export class BrowserManager {
       }
     }
 
-    // 如果所有路径都不存在，抛出明确的错误
-    const platformName = platform === 'win32' ? 'Windows' : platform === 'darwin' ? 'macOS' : 'Linux';
-    throw new Error(
-      `未找到系统浏览器（Chrome/Chromium）。\n` +
-      `请安装 Chrome 或 Chromium 浏览器，或通过 PUPPETEER_EXECUTABLE_PATH 环境变量指定浏览器路径。\n` +
-      `\n${platformName} 系统常见安装路径：\n` +
-      searchPaths.map(p => `  - ${p}`).join('\n') +
-      `\n\n安装指南：\n` +
-      `  - Chrome: https://www.google.com/chrome/\n` +
-      `  - Chromium: https://www.chromium.org/getting-involved/download-chromium`
-    );
+    // 如果所有路径都不存在，返回 undefined
+    // 这样 puppeteer 会使用它自带的 Chromium（首次安装时已下载）
+    return undefined;
   }
 
   /**

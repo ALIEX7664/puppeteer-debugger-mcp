@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer-core';
+import { Page } from 'puppeteer';
 import { ConsoleLogEntry, GetConsoleErrorsParams } from '../types.js';
 import { BrowserManager } from '../browser-manager.js';
 

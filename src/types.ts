@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer-core';
+import { Page } from 'puppeteer';
 
 /**
  * 浏览器配置选项

@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer-core';
+import { Page } from 'puppeteer';
 import { BrowserManager } from '../browser-manager.js';
 
 export interface GetLighthouseParams {
