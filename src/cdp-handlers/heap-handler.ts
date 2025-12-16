@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import {
   HeapSnapshot,
   MemoryAnalysis,
@@ -30,16 +30,17 @@ export class HeapHandler {
     const page = await this.browserManager.getPage(params.url);
     const client = await page.target().createCDPSession();
 
-    // 启用 HeapProfiler
-    await client.send('HeapProfiler.enable');
+    try {
+      // 启用 HeapProfiler
+      await client.send('HeapProfiler.enable');
 
-    // 获取堆快照
-    const snapshot = await client.send('HeapProfiler.takeHeapSnapshot', {
-      reportProgress: false,
-    });
+      // 获取堆快照
+      const snapshot = await client.send('HeapProfiler.takeHeapSnapshot', {
+        reportProgress: false,
+      });
 
-    // 获取堆统计信息
-    const heapStats = await page.evaluate(() => {
+      // 获取堆统计信息
+      const heapStats = await page.evaluate(() => {
       if ((performance as any).memory) {
         const memory = (performance as any).memory;
         return {
@@ -62,12 +63,20 @@ export class HeapHandler {
     // 注意：实际的堆快照数据非常复杂，这里提供简化版本
     // 实际应用中需要解析完整的快照格式
 
-    return {
-      nodes,
-      totalSize: heapStats?.usedJSHeapSize || 0,
-      totalNodes,
-      timestamp: Date.now(),
-    };
+      return {
+        nodes,
+        totalSize: heapStats?.usedJSHeapSize || 0,
+        totalNodes,
+        timestamp: Date.now(),
+      };
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
+    }
   }
 
   /**
@@ -79,12 +88,13 @@ export class HeapHandler {
     const page = await this.browserManager.getPage(params.url);
     const client = await page.target().createCDPSession();
 
-    // 启用 Runtime 和 HeapProfiler
-    await client.send('Runtime.enable');
-    await client.send('HeapProfiler.enable');
+    try {
+      // 启用 Runtime 和 HeapProfiler
+      await client.send('Runtime.enable');
+      await client.send('HeapProfiler.enable');
 
-    // 获取堆使用情况
-    const heapUsage = await page.evaluate(() => {
+      // 获取堆使用情况
+      const heapUsage = await page.evaluate(() => {
       if ((performance as any).memory) {
         const memory = (performance as any).memory;
         return {
@@ -102,14 +112,22 @@ export class HeapHandler {
       };
     });
 
-    // 获取对象统计（通过采样）
-    const objectCounts = await this.getObjectCounts(client);
+      // 获取对象统计（通过采样）
+      const objectCounts = await this.getObjectCounts(client);
 
-    return {
-      ...heapUsage,
-      timestamp: Date.now(),
-      objectCounts,
-    };
+      return {
+        ...heapUsage,
+        timestamp: Date.now(),
+        objectCounts,
+      };
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
+    }
   }
 
   /**
@@ -122,22 +140,23 @@ export class HeapHandler {
     const client = await page.target().createCDPSession();
     const pageUrl = page.url();
 
-    // 启用 HeapProfiler
-    await client.send('HeapProfiler.enable');
+    try {
+      // 启用 HeapProfiler
+      await client.send('HeapProfiler.enable');
 
-    // 开始跟踪分配
-    await client.send('HeapProfiler.startTrackingHeapObjects', {
-      trackAllocations: true,
-    });
+      // 开始跟踪分配
+      await client.send('HeapProfiler.startTrackingHeapObjects', {
+        trackAllocations: true,
+      });
 
-    // 等待指定时间
-    const duration = params.duration || 5000;
-    await new Promise((resolve) => setTimeout(resolve, duration));
+      // 等待指定时间
+      const duration = params.duration || 5000;
+      await new Promise((resolve) => setTimeout(resolve, duration));
 
-    // 停止跟踪并获取结果
-    await client.send('HeapProfiler.stopTrackingHeapObjects', {
-      reportProgress: false,
-    });
+      // 停止跟踪并获取结果
+      await client.send('HeapProfiler.stopTrackingHeapObjects', {
+        reportProgress: false,
+      });
 
     // 获取分配采样数据
     const allocations: AllocationTracking['allocations'] = [];
@@ -153,14 +172,22 @@ export class HeapHandler {
 
     totalAllocated = heapStats;
 
-    const tracking: AllocationTracking = {
-      allocations,
-      totalAllocated,
-      count: allocations.length,
-    };
+      const tracking: AllocationTracking = {
+        allocations,
+        totalAllocated,
+        count: allocations.length,
+      };
 
-    this.allocationTracking.set(pageUrl, tracking);
-    return tracking;
+      this.allocationTracking.set(pageUrl, tracking);
+      return tracking;
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
+    }
   }
 
   /**

@@ -1,4 +1,4 @@
-import { Page } from 'puppeteer';
+import { Page } from 'puppeteer-core';
 import { PerformanceMetrics, GetPerformanceParams } from '../types.js';
 import { BrowserManager } from '../browser-manager.js';
 
@@ -22,10 +22,11 @@ export class PerformanceHandler {
 
     // 启用 Performance 域
     const client = await page.target().createCDPSession();
-    await client.send('Performance.enable');
+    try {
+      await client.send('Performance.enable');
 
-    // 获取性能指标
-    const performanceData = await page.evaluate(() => {
+      // 获取性能指标
+      const performanceData = await page.evaluate(() => {
       const navigation = performance.getEntriesByType(
         'navigation'
       )[0] as PerformanceNavigationTiming;
@@ -94,10 +95,18 @@ export class PerformanceHandler {
       };
     });
 
-    // 获取 Performance Timeline 数据
-    const timeline = await client.send('Performance.getMetrics');
+      // 获取 Performance Timeline 数据
+      const timeline = await client.send('Performance.getMetrics');
 
-    return performanceData as PerformanceMetrics;
+      return performanceData as PerformanceMetrics;
+    } finally {
+      // 确保 CDP 连接被正确关闭
+      try {
+        await client.detach();
+      } catch (error) {
+        // 忽略关闭错误
+      }
+    }
   }
 
   /**

@@ -293,7 +293,7 @@
 
 ## 注意事项
 
-- **持久化连接**：浏览器实例在 Server 启动时创建，保持运行直到 Server 关闭。所有工具调用共享同一个浏览器实例，提高性能。
+- **持久化连接**：浏览器实例在 Server 启动时创建，保持运行直到 Server 关闭。
 - **动态 URL**：所有工具都支持通过参数传入 URL。如果页面不存在，系统会自动创建新页面并导航到指定 URL。
 - **Chrome 路径**：如果系统未安装 Chrome 或 Chromium，或安装路径不在默认位置，可以通过 `PUPPETEER_EXECUTABLE_PATH` 环境变量指定浏览器路径：
   - Windows: `C:\Program Files\Google\Chrome\Application\chrome.exe`

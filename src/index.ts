@@ -16,9 +16,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 // MCP Server 通过 stdio 与客户端通信，这意味着它从 stdin 读取请求，向 stdout 写入响应
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-// 导入 z (zod) - 用于定义和验证工具的参数模式
-// zod 是一个 TypeScript 优先的模式验证库，用于在运行时验证数据
-import { z } from 'zod';
+// 注意：zod 的导入已移至工具定义文件中
 
 // 导入我们自定义的模块
 import { BrowserManager } from './browser-manager.js';
@@ -27,6 +25,8 @@ import { ElementHandler } from './cdp-handlers/element-handler.js';
 import { CacheHandler } from './cdp-handlers/cache-handler.js';
 import { PerformanceHandler } from './cdp-handlers/performance-handler.js';
 import { HeapHandler } from './cdp-handlers/heap-handler.js';
+import { LighthouseHandler } from './cdp-handlers/lighthouse-handler.js';
+import { registerAllTools } from './tools/index.js';
 
 // 版本号会在构建时通过 tsup 的 define 选项内联
 // 这样无需运行时读取 package.json，也无需每次手动修改版本号
@@ -49,12 +49,16 @@ class DebuggerMCPServer {
   // 浏览器管理器 - 负责管理 Puppeteer 浏览器实例和页面
   private browserManager: BrowserManager;
 
+  // 关闭标志，防止重复关闭
+  private isShuttingDown: boolean = false;
+
   // 各个功能处理器 - 每个处理器负责特定的调试功能
   private consoleHandler: ConsoleHandler;      // Console 日志处理
   private elementHandler: ElementHandler;       // DOM 元素检查
   private cacheHandler: CacheHandler;           // 缓存状态检查
   private performanceHandler: PerformanceHandler; // 性能数据收集
   private heapHandler: HeapHandler;             // 内存堆栈分析
+  private lighthouseHandler: LighthouseHandler;  // Lighthouse 性能分析
 
   /**
    * 构造函数
@@ -93,6 +97,7 @@ class DebuggerMCPServer {
     this.cacheHandler = new CacheHandler(this.browserManager);
     this.performanceHandler = new PerformanceHandler(this.browserManager);
     this.heapHandler = new HeapHandler(this.browserManager);
+    this.lighthouseHandler = new LighthouseHandler(this.browserManager);
 
     // 注册所有工具
     // 这一步会将所有工具注册到 MCP Server，使客户端可以调用它们
@@ -102,270 +107,52 @@ class DebuggerMCPServer {
   /**
    * 注册所有工具
    * 
-   * 使用 McpServer 的 registerTool 方法注册每个工具。
-   * registerTool 方法需要：
-   * 1. 工具名称（name）
-   * 2. 工具配置（config）- 包括描述、输入模式等
-   * 3. 工具处理函数（callback）- 当客户端调用工具时执行的函数
+   * 使用统一的工具注册管理器来注册所有工具。
+   * 每个工具的定义都在独立的文件中，便于管理和维护。
    */
   private registerTools(): void {
-    // ========== 工具 1: navigate ==========
-    // 导航到指定 URL
-    this.server.registerTool(
-      'navigate',
-      {
-        description: '导航到指定 URL',
-        // inputSchema 定义了工具接受的参数
-        // 使用 zod 来定义参数模式，这样可以自动验证参数类型
-        inputSchema: z.object({
-          url: z.string().describe('要导航到的 URL'),
-        }),
-      },
-      // 工具处理函数
-      // args 是经过验证的参数对象，类型由 inputSchema 自动推断
-      // extra 包含请求的额外信息（如请求 ID、会话信息等）
-      async (args: { url: string }) => {
-        await this.browserManager.navigate(args.url);
-        // 返回工具执行结果
-        // content 数组包含返回给客户端的内容
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Successfully navigated to ${args.url}`,
-            },
-          ],
-        };
+    // 创建工具上下文，包含所有需要的处理器和管理器
+    const context = {
+      browserManager: this.browserManager,
+      consoleHandler: this.consoleHandler,
+      elementHandler: this.elementHandler,
+      cacheHandler: this.cacheHandler,
+      performanceHandler: this.performanceHandler,
+      heapHandler: this.heapHandler,
+      lighthouseHandler: this.lighthouseHandler,
+    };
+
+    // 使用统一的工具注册函数注册所有工具
+    registerAllTools(this.server, context);
+  }
+
+  /**
+   * 优雅关闭和清理资源
+   * 统一的清理函数，确保所有资源都被正确释放
+   * 使用标志防止重复关闭
+   */
+  private async gracefulShutdown(exitCode: number = 0): Promise<void> {
+    // 防止重复关闭
+    if (this.isShuttingDown) {
+      return;
+    }
+    this.isShuttingDown = true;
+
+    try {
+      // 关闭浏览器（如果已初始化）
+      if (this.browserManager.isInitialized()) {
+        await this.browserManager.close();
       }
-    );
 
-    // ========== 工具 2: get_console_errors ==========
-    // 获取 Console 异常和日志
-    this.server.registerTool(
-      'get_console_errors',
-      {
-        description: '获取 Console 异常和日志',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选，如果未提供则使用当前页面）'),
-          level: z.enum(['error', 'warning', 'all']).optional().default('all').describe('日志级别过滤'),
-        }),
-      },
-      async (args: { url?: string; level?: 'error' | 'warning' | 'all' }) => {
-        const logs = await this.consoleHandler.getConsoleErrors({
-          url: args.url,
-          level: args.level || 'all',
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(logs, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 3: check_element ==========
-    // 检查元素状态（属性、样式、可见性等）
-    this.server.registerTool(
-      'check_element',
-      {
-        description: '检查元素状态（属性、样式、可见性等）',
-        inputSchema: z.object({
-          selector: z.string().describe('CSS 选择器'),
-          url: z.string().optional().describe('页面 URL（可选）'),
-        }),
-      },
-      async (args: { selector: string; url?: string }) => {
-        const elementState = await this.elementHandler.checkElement({
-          selector: args.selector,
-          url: args.url,
-        });
-
-        if (!elementState) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: `Element not found: ${args.selector}`,
-              },
-            ],
-          };
-        }
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(elementState, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 4: get_cache_status ==========
-    // 获取缓存状态（LocalStorage、SessionStorage、Cookies、IndexedDB）
-    this.server.registerTool(
-      'get_cache_status',
-      {
-        description: '获取缓存状态（LocalStorage、SessionStorage、Cookies、IndexedDB）',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-        }),
-      },
-      async (args: { url?: string }) => {
-        const cacheStatus = await this.cacheHandler.getCacheStatus({
-          url: args.url,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(cacheStatus, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 5: get_performance ==========
-    // 获取性能数据（Performance Timeline、页面加载指标）
-    this.server.registerTool(
-      'get_performance',
-      {
-        description: '获取性能数据（Performance Timeline、页面加载指标）',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-        }),
-      },
-      async (args: { url?: string }) => {
-        const performance = await this.performanceHandler.getPerformance({
-          url: args.url,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(performance, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 6: get_heap_snapshot ==========
-    // 获取堆快照
-    this.server.registerTool(
-      'get_heap_snapshot',
-      {
-        description: '获取堆快照',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-        }),
-      },
-      async (args: { url?: string }) => {
-        const snapshot = await this.heapHandler.getHeapSnapshot({
-          url: args.url,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(snapshot, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 7: analyze_memory ==========
-    // 分析内存使用情况
-    this.server.registerTool(
-      'analyze_memory',
-      {
-        description: '分析内存使用情况',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-        }),
-      },
-      async (args: { url?: string }) => {
-        const analysis = await this.heapHandler.analyzeMemory({
-          url: args.url,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(analysis, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 8: track_allocations ==========
-    // 跟踪对象分配
-    this.server.registerTool(
-      'track_allocations',
-      {
-        description: '跟踪对象分配',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-          duration: z.number().optional().default(5000).describe('跟踪时长（毫秒），默认 5000'),
-        }),
-      },
-      async (args: { url?: string; duration?: number }) => {
-        const tracking = await this.heapHandler.trackAllocations({
-          url: args.url,
-          duration: args.duration,
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify(tracking, null, 2),
-            },
-          ],
-        };
-      }
-    );
-
-    // ========== 工具 9: take_screenshot ==========
-    // 截图（辅助调试）
-    this.server.registerTool(
-      'take_screenshot',
-      {
-        description: '截图（辅助调试）',
-        inputSchema: z.object({
-          url: z.string().optional().describe('页面 URL（可选）'),
-          fullPage: z.boolean().optional().default(false).describe('是否截取整页'),
-        }),
-      },
-      async (args: { url?: string; fullPage?: boolean }) => {
-        const page = await this.browserManager.getPage(args.url);
-        const screenshot = await page.screenshot({
-          fullPage: args.fullPage || false,
-          encoding: 'base64',
-        });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Screenshot taken (base64): ${screenshot}`,
-            },
-          ],
-        };
-      }
-    );
+      // 关闭 MCP 服务器连接
+      await this.server.close();
+    } catch (error) {
+      // 记录错误但不阻止退出
+      console.error('Error during graceful shutdown:', error);
+    } finally {
+      // 确保进程退出
+      process.exit(exitCode);
+    }
   }
 
   /**
@@ -386,30 +173,57 @@ class DebuggerMCPServer {
     // 连接后，服务器开始监听来自客户端的请求
     await this.server.connect(transport);
 
-    // 延迟初始化浏览器（在后台异步初始化，不阻塞服务器启动）
-    // 这样即使浏览器初始化失败，服务器仍然可以启动并响应请求
-    // 浏览器会在第一次使用时自动初始化
-    this.browserManager.initialize().catch((error) => {
-      // 错误输出到 stderr，避免干扰 MCP 协议的 stdout 通信
-      console.error('Warning: Failed to initialize browser:', error);
-      console.error('Browser will be initialized on first use.');
-    });
+    // 浏览器将在第一次调用 MCP 工具时自动初始化（通过 getPage() 或 navigate()）
+    // 这样可以避免在服务器启动时立即启动浏览器进程，节省资源
+    // 所有工具处理函数都会通过 browserManager.getPage() 获取页面，
+    // 而 getPage() 方法会在浏览器未初始化时自动调用 initialize()
 
     // 设置优雅关闭处理
-    // 当收到 SIGINT（Ctrl+C）或 SIGTERM 信号时，关闭浏览器并退出
+    // 监听多种关闭场景，确保在 MCP 禁用时能够正确清理资源并退出进程
 
     // SIGINT 处理（通常是 Ctrl+C）
-    process.on('SIGINT', async () => {
-      await this.browserManager.close();  // 关闭浏览器
-      await this.server.close();          // 关闭服务器连接
-      process.exit(0);                    // 退出进程
+    process.on('SIGINT', () => {
+      this.gracefulShutdown(0);
     });
 
     // SIGTERM 处理（通常是系统关闭信号）
-    process.on('SIGTERM', async () => {
-      await this.browserManager.close();  // 关闭浏览器
-      await this.server.close();          // 关闭服务器连接
-      process.exit(0);                    // 退出进程
+    process.on('SIGTERM', () => {
+      this.gracefulShutdown(0);
+    });
+
+    // 监听 stdin 关闭事件（当 Cursor 禁用 MCP 时会关闭 stdin）
+    // 这是检测 MCP 被禁用的关键方式
+    // 同时监听 'end' 和 'close' 事件，确保能够捕获所有关闭场景
+    const handleStdinClose = () => {
+      this.gracefulShutdown(0);
+    };
+
+    // 监听 stdin 的 'end' 事件（当输入流结束时触发）
+    // 这通常发生在 Cursor 关闭 MCP 连接时
+    process.stdin.on('end', handleStdinClose);
+
+    // 监听 stdin 的 'close' 事件（当底层文件描述符关闭时触发）
+    // 这是更底层的关闭事件，作为备用检测方式
+    process.stdin.on('close', handleStdinClose);
+
+    // 注意：process.on('exit') 中不能使用异步操作
+    // 清理工作应该在 gracefulShutdown 中完成，这里不需要额外处理
+
+    // 处理未捕获的异常，确保浏览器被正确关闭
+    process.on('uncaughtException', async (error) => {
+      console.error('Uncaught exception:', error);
+      await this.gracefulShutdown(1);
+    });
+
+    // 处理未处理的 Promise 拒绝
+    process.on('unhandledRejection', async (reason, promise) => {
+      console.error('Unhandled rejection at:', promise, 'reason:', reason);
+      // 注意：不要在这里关闭浏览器，因为这可能是临时错误
+      // 但如果错误严重，可以考虑退出
+      if (reason instanceof Error && reason.message.includes('ECONNRESET')) {
+        // 如果是连接重置错误，可能是 MCP 客户端断开连接
+        await this.gracefulShutdown(0);
+      }
     });
   }
 }
