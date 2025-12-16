@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v1.0.6...v1.0.7) (2025-12-16)
+
+
+### Bug Fixes
+
+* **browser:** 切换回 puppeteer 并优先使用本地浏览器 ([e217042](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/commit/e217042aac25029f9f6020b7bb182f3dfc72c550))
+
 ## [1.0.6](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v1.0.5...v1.0.6) (2025-12-16)
 
 
