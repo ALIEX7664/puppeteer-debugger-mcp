@@ -42,6 +42,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      # 先测试通过，再构建（与 test.yml 保持一致的核心流程）
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Run integration tests
+        run: pnpm test:integration
+        env:
+          CI: true
+
       - name: Build
         run: pnpm run build
 
