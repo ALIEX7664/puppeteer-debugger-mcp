@@ -1,3 +1,15 @@
+# [2.1.0](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v2.0.0...v2.1.0) (2025-12-18)
+
+
+### Bug Fixes
+
+* **ci:** Tests 工作流仅在 Node 20 运行 ([d7a2555](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/commit/d7a255598debc58641cb31cb03f0cc325b200def))
+
+
+### Features
+
+* **heap:** 完善 heap snapshot 采集/解析并支持 MCP Inspector 调试 ([83ccc7d](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/commit/83ccc7d33240767d0294b1ed7f90ba9bdb5d596e))
+
 # [2.0.0](https://github.com/ALIEX7664/puppeteer-debugger-mcp-server/compare/v1.0.7...v2.0.0) (2025-12-16)
 
 
