@@ -68,7 +68,7 @@ export const WAIT_TIMES = {
 } as const;
 
 export const LIMITATIONS = [
-  'accessibility/best-practices/seo 评分为近似值，非完整审计',
-  '指标采集基于 Web Vitals 和 CDP，可能与真实 Lighthouse 结果有差异',
-  '部分审计项可能缺失或不完整',
+  'Accessibility, best-practices, and SEO scores are approximate values, not complete audits',
+  'Metrics collection is based on Web Vitals and CDP APIs, which may differ from actual Lighthouse results',
+  'Some audit items may be missing or incomplete',
 ] as const;
