@@ -19,6 +19,8 @@
     "dev": "tsup --watch",
     "inspector": "pnpm run build && pnpm dlx  @modelcontextprotocol/inspector node dist/index.js",
     "inspector:debug": "pnpm run build && pnpm dlx  @modelcontextprotocol/inspector node --inspect-brk=9229 dist/index.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
@@ -55,15 +57,20 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.0",
+    "@typescript-eslint/parser": "^8.50.0",
     "@vitest/coverage-v8": "^4.0.16",
     "@vitest/ui": "^4.0.16",
+    "eslint": "^9.39.2",
     "semantic-release": "^25.0.2",
     "tsup": "^8.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",
+    "typescript-eslint": "^8.50.0",
     "vitest": "^4.0.16"
   },
   "release": {
